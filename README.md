@@ -4,7 +4,7 @@ C++代码
 ### 项目构建
 #### macOS
 ```shell
-$ cmake -G Ninja -S . -B build -Dtest=ON -DCMAKE_CXX_COMPILER="/usr/local/opt/llvm/bin/clang++"
+$ cmake -G Ninja -S . -B build -Dtest=ON -DCMAKE_CXX_COMPILER="/usr/local/opt/llvm@17/bin/clang++"
 $ cmake --build build && ctest --test-dir build
 ```
 

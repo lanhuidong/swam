@@ -9,59 +9,43 @@
 namespace swam {
     namespace concurrency {
         template <typename T>
-        class threadsafe_queue {
+        class queue {
            private:
-            mutable std::mutex mut_;
-            std::queue<T> data_queue_;
-            std::condition_variable data_cond_;
+            class node {
+                T data_;
+                std::unique_ptr<node> next;
+                node(T data) : data_{std::move(data)} {}
+            };
+            std::unique_ptr<node> head_;
+            node* tail_;
 
            public:
-            threadsafe_queue() = default;
-
-            void push(T new_value) {
-                std::lock_guard lock(mut_);
-                data_queue_.push(std::move(new_value));
-                data_cond_.notify_one();
-            }
-
-            void wait_and_pop(T& value) {
-                std::unique_lock lock(mut_);
-                data_cond_.wait(lock, [this] { return !data_queue_.empty(); });
-                value = std::move(data_queue_.front());
-                data_queue_.pop();
-            }
-
-            std::shared_ptr<T> wait_and_pop() {
-                std::unique_lock lock(mut_);
-                data_cond_.wait(lock, [this] { return !data_queue_.empty(); });
-                std::shared_ptr res{std::make_shared<T>(std::move(data_queue_.front()))};
-                data_queue_.pop();
-                return res;
-            }
-
-            bool try_pop(T& value) {
-                std::lock_guard lock(mut_);
-                if (data_queue_.empty()) {
-                    return false;
-                }
-                value = std::move(data_queue_.front());
-                data_queue_.pop();
-                return true;
-            }
+            queue() : tail_(nullptr) {}
+            queue(const queue& other) = delete;
+            queue& operator=(const queue& other) = delete;
 
             std::shared_ptr<T> try_pop() {
-                std::unique_lock lock(mut_);
-                if (data_queue_.empty()) {
+                if (!head_) {
                     return std::shared_ptr<T>();
                 }
-                std::shared_ptr res{std::make_shared<T>(std::move(data_queue_.front()))};
-                data_queue_.pop();
+                std::shared_ptr<T> const res(std::make_shared<T>(std::move(head_->data_)));
+                std::unique_ptr<node> const old_head = std::move(head_);
+                head_ = std::move(old_head->next);
+                if (!head_) {
+                    tail_ = nullptr;
+                }
                 return res;
             }
 
-            bool empty() const {
-                std::lock_guard lock(mut_);
-                return data_queue_.empty();
+            void push(T new_value) {
+                std::unique_ptr<node> p{new node(std::move(new_value))};
+                node* const new_tail = p.get();
+                if (tail_) {
+                    tail_->next = std::move(p);
+                } else {
+                    head_ = std::move(p);
+                }
+                tail_ = new_tail;
             }
         };
     }  // namespace concurrency

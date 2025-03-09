@@ -41,10 +41,13 @@ conan_cmake_install(PATH_OR_REFERENCE .
 find_package(fmt REQUIRED)
 
 add_subdirectory(concurrency)
+add_subdirectory(util)
+add_subdirectory(design-partten)
 
 option(test "Enable unit test" ON)
 
 if(test) 
     add_subdirectory(concurrency-test)
+    add_subdirectory(util-test)
     include(CTest)
 endif()
